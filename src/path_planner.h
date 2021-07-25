@@ -8,8 +8,16 @@
 #include <utility>
 #include <vector>
 #include <cmath>
+#include <iostream>
+
+#include "spline.h"
 
 constexpr double pi() { return M_PI; };
+constexpr int PATH_WAYPOINT_SIZE = 50;
+constexpr double TIME_INTERVAL = 0.02;
+constexpr double MAX_VEL = 49.5 / 2.237; // 49.5mph to m/s.
+constexpr double MAX_ACC = 10;
+constexpr double DELTA_VEL = 0.1; // delta_v when changing velocity in 0.02s.
 
 class PathPlanner {
  public:
@@ -24,20 +32,21 @@ class PathPlanner {
       _map_waypoints_dx(std::move(map_waypoints_dx)),
       _map_waypoints_dy(std::move(map_waypoints_dy)) {};
   ~PathPlanner() = default;
-  static void FillNextPath(double car_x,
-                    double car_y,
-                    double car_s,
-                    double car_d,
-                    double car_yaw,
-                    double car_speed,
-                    const std::vector<double>& previous_path_x,
-                    const std::vector<double>& previous_path_y,
-                    double end_path_s,
-                    double end_path_d,
-                    const std::vector<std::vector<double>>& sensor_fusion,
-                    std::vector<double>& next_x_vals,
-                    std::vector<double>& next_y_vals);
+  void FillNextPath(double car_x,
+                           double car_y,
+                           double car_s,
+                           double car_d,
+                           double car_yaw,
+                           double car_speed,
+                           const std::vector<double>& previous_path_x,
+                           const std::vector<double>& previous_path_y,
+                           double end_path_s,
+                           double end_path_d,
+                           const std::vector<std::vector<double>>& sensor_fusion,
+                           std::vector<double>& next_x_vals,
+                           std::vector<double>& next_y_vals);
 
+ private:
   // Calculate closest waypoint to current x, y position
   int ClosestWaypoint(double x, double y);
   // Returns next waypoint of the closest waypoint
@@ -54,7 +63,9 @@ class PathPlanner {
   static double distance(double x1, double y1, double x2, double y2) {
     return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
   };
+  static int CurrentLaneIndex(double d);
 
+ private:
   // map info
   std::vector<double> _map_waypoints_x;
   std::vector<double> _map_waypoints_y;
@@ -65,6 +76,8 @@ class PathPlanner {
   //    we need the information about the direction of the road.
   std::vector<double> _map_waypoints_dx;
   std::vector<double> _map_waypoints_dy;
+
+  double _ref_vel {MAX_VEL};
 };
 
 #endif //PATH_PLANNING_SRC_PATH_PLANNER_H_
