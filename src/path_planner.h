@@ -18,6 +18,7 @@ constexpr double TIME_INTERVAL = 0.02;
 constexpr double MAX_VEL = 49.5 / 2.237; // 49.5mph to m/s.
 constexpr double MAX_ACC = 9.5;
 constexpr double DELTA_VEL = MAX_ACC * TIME_INTERVAL; // velocity change within 0.02s.
+constexpr double CLOSE_DIST = 30;
 
 class PathPlanner {
  public:

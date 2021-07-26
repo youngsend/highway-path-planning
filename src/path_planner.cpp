@@ -154,6 +154,7 @@ void PathPlanner::FillNextPath(double car_x,
   bool too_close = false;
 
   // find ref_v to use
+  double preceding_car_dist = CLOSE_DIST;
   for(const auto & vehicle_data : sensor_fusion) {
     double d = vehicle_data[6];
     if (d < 4+4*current_lane && d > 4*current_lane) {
@@ -165,19 +166,24 @@ void PathPlanner::FillNextPath(double car_x,
 
       check_car_s += (double)prev_size * TIME_INTERVAL * check_speed;
 
-      if (check_car_s > car_s && check_car_s - car_s < 30) {
+      if (check_car_s > car_s && check_car_s - car_s < CLOSE_DIST) {
         // this vehicle is in (0, 30) front of ego when previous path is over.
         // ToDo: try lane change. only need to change current_lane.
         //  cost function: I only consider at which lane ego car should be.
         too_close = true;
+        if (check_car_s - car_s < preceding_car_dist) {
+          // record the preceding vehicle.
+          // if there's car right in front of ego, run after it.
+          _ref_vel = check_speed;
+          preceding_car_dist = check_car_s - car_s;
+        }
       }
     }
   }
 
-  if (too_close) {
-    _ref_vel -= 0.1;
-  } else if (_ref_vel < MAX_VEL) {
-    _ref_vel += 0.1;
+  if (!too_close) {
+    // if there's no preceding vehicle within 30m, run at max velocity.
+    _ref_vel = MAX_VEL;
   }
 
   // create a list of widely spaced (x, y) waypoints, evenly spaced at 30m.
@@ -255,13 +261,13 @@ void PathPlanner::FillNextPath(double car_x,
 
   // start with all of the previous path points from last time
   // ToDo: should not use all points from last path, because this leads to less responsiveness.
+  //  this can be mitigated by decreasing path size.
   for(int i=0; i<previous_path_x.size(); i++) {
     next_x_vals.push_back(previous_path_x[i]);
     next_y_vals.push_back(previous_path_y[i]);
   }
 
   // calculate how to break up spline points so that we travel at our desired reference velocity
-  // ToDo: this only produces constant velocity trajectory. may violate max acc constraint.
   double target_x = 30.0;
   double target_y = s(target_x);
   double target_dist = sqrt(target_x*target_x + target_y*target_y);
