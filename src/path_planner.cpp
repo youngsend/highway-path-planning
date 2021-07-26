@@ -139,6 +139,8 @@ void PathPlanner::FillNextPath(double car_x,
   // ToDo: 4. trajectory generation (use x, y coordinates).
   // calculate current lane index, left: 0, middle: 1, right: 2.
   int current_lane = CurrentLaneIndex(car_d);
+  int target_lane = current_lane; // used for lane change and trajectory generation.
+  double last_vel = car_speed; // used as the init vel when generating velocity profile (distance interval).
 
   // from here are code from project Q&A. to implement lane keeping and preceding vehicle following.
 
@@ -166,6 +168,7 @@ void PathPlanner::FillNextPath(double car_x,
       if (check_car_s > car_s && check_car_s - car_s < 30) {
         // this vehicle is in (0, 30) front of ego when previous path is over.
         // ToDo: try lane change. only need to change current_lane.
+        //  cost function: I only consider at which lane ego car should be.
         too_close = true;
       }
     }
@@ -213,13 +216,17 @@ void PathPlanner::FillNextPath(double car_x,
 
     ptsy.push_back(ref_y_prev);
     ptsy.push_back(ref_y);
+
+    // if more than 2 points remain, use last 2 points to calculate velocity between them.
+    last_vel = distance(ref_x_prev, ref_y_prev, ref_x, ref_y) / TIME_INTERVAL;
   }
 
   // in Frenet add evenly 30m spaced points ahead of the starting reference.
   // car_s has become the last point of previous path now.
-  std::vector<double> next_wp0 = getXY(car_s+30, 2+4*current_lane);
-  std::vector<double> next_wp1 = getXY(car_s+60, 2+4*current_lane);
-  std::vector<double> next_wp2 = getXY(car_s+90, 2+4*current_lane);
+  // when changing lane, this means ego vehicle needs to complete lane change within 30m. Is this OK?
+  std::vector<double> next_wp0 = getXY(car_s+30, 2+4*target_lane);
+  std::vector<double> next_wp1 = getXY(car_s+60, 2+4*target_lane);
+  std::vector<double> next_wp2 = getXY(car_s+90, 2+4*target_lane);
 
   ptsx.push_back(next_wp0[0]);
   ptsx.push_back(next_wp1[0]);
@@ -254,15 +261,32 @@ void PathPlanner::FillNextPath(double car_x,
   }
 
   // calculate how to break up spline points so that we travel at our desired reference velocity
+  // ToDo: this only produces constant velocity trajectory. may violate max acc constraint.
   double target_x = 30.0;
   double target_y = s(target_x);
   double target_dist = sqrt(target_x*target_x + target_y*target_y);
   double x_add_on = 0;
-  double N = target_dist / (TIME_INTERVAL * _ref_vel);
-  double delta_x = target_x / N;
+  double x_dist_rate = target_x / target_dist;
 
+  double delta_dist;
   // fill up the rest of our path planner after filling it with previous points, always output 50 points
   for(int i=0; i<PATH_WAYPOINT_SIZE-previous_path_x.size(); i++) {
+    // make sure max acceleration is not violated.
+    if (last_vel < _ref_vel - DELTA_VEL) {
+      // need to accelerate
+      delta_dist = last_vel * TIME_INTERVAL + 0.5 * MAX_ACC * TIME_INTERVAL * TIME_INTERVAL;
+      last_vel += DELTA_VEL;
+    } else if (last_vel > _ref_vel + DELTA_VEL) {
+      // need to decelerate
+      delta_dist = last_vel * TIME_INTERVAL - 0.5 * MAX_ACC * TIME_INTERVAL * TIME_INTERVAL;
+      last_vel -= DELTA_VEL;
+    } else {
+      // can reach reference velocity after 0.02s.
+      delta_dist = TIME_INTERVAL * _ref_vel;
+      last_vel = _ref_vel;
+    }
+    double delta_x = x_dist_rate * delta_dist;
+
     double x_point = x_add_on + delta_x;
     double y_point = s(x_point);
     x_add_on = x_point;

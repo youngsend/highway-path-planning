@@ -16,8 +16,8 @@ constexpr double pi() { return M_PI; };
 constexpr int PATH_WAYPOINT_SIZE = 50;
 constexpr double TIME_INTERVAL = 0.02;
 constexpr double MAX_VEL = 49.5 / 2.237; // 49.5mph to m/s.
-constexpr double MAX_ACC = 10;
-constexpr double DELTA_VEL = 0.1; // delta_v when changing velocity in 0.02s.
+constexpr double MAX_ACC = 9.5;
+constexpr double DELTA_VEL = MAX_ACC * TIME_INTERVAL; // velocity change within 0.02s.
 
 class PathPlanner {
  public:
