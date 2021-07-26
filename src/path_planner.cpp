@@ -151,40 +151,93 @@ void PathPlanner::FillNextPath(double car_x,
     car_s = end_path_s;
   }
 
-  bool too_close = false;
-
   // find ref_v to use
-  double preceding_car_dist = CLOSE_DIST;
+  std::vector<double> preceding_car_dist = { CLOSE_DIST_FRONT, CLOSE_DIST_FRONT, CLOSE_DIST_FRONT };
+  // left, ego, right reference velocities.
+  std::vector<double> ref_vels = { MAX_VEL, MAX_VEL, MAX_VEL };
+  // check if each lane exists.
+  std::vector<bool> lane_exist = { current_lane-1>=0, true, current_lane+1<=2 };
+
   for(const auto & vehicle_data : sensor_fusion) {
     double d = vehicle_data[6];
-    if (d < 4+4*current_lane && d > 4*current_lane) {
+    double vx = vehicle_data[3];
+    double vy = vehicle_data[4];
+    double check_speed = sqrt(vx*vx + vy*vy);
+    double check_car_s = vehicle_data[5];
+    check_car_s += (double) prev_size*TIME_INTERVAL*check_speed;
+    double dist_from_car = check_car_s - car_s;
+
+    // this vehicle is in (0, 30) front of ego when previous path is over.
+    if (d < 4 + 4*current_lane && d > 4*current_lane) {
       // car is in my lane
-      double vx = vehicle_data[3];
-      double vy = vehicle_data[4];
-      double check_speed = sqrt(vx*vx + vy*vy);
-      double check_car_s = vehicle_data[5];
-
-      check_car_s += (double)prev_size * TIME_INTERVAL * check_speed;
-
-      if (check_car_s > car_s && check_car_s - car_s < CLOSE_DIST) {
-        // this vehicle is in (0, 30) front of ego when previous path is over.
-        // ToDo: try lane change. only need to change current_lane.
-        //  cost function: I only consider at which lane ego car should be.
-        too_close = true;
-        if (check_car_s - car_s < preceding_car_dist) {
+      if (dist_from_car > -1 && dist_from_car <= CLOSE_DIST_FRONT) {
+        if (dist_from_car < preceding_car_dist[1]) {
           // record the preceding vehicle.
           // if there's car right in front of ego, run after it.
-          _ref_vel = check_speed;
-          preceding_car_dist = check_car_s - car_s;
+          ref_vels[1] = check_speed;
+          preceding_car_dist[1] = dist_from_car;
+        }
+      }
+    } else if (d < 4*current_lane && d > 4*current_lane - 4) {
+      // car is in my left lane
+      if (dist_from_car > CLOSE_DIST_BACK && dist_from_car <= CLOSE_DIST_FRONT) {
+        // can change lane and need to use this vehicle's velocity as reference velocity.
+        if (dist_from_car < preceding_car_dist[0]) {
+          // record the preceding vehicle.
+          // if there's car right in front of ego, run after it.
+          ref_vels[0] = check_speed;
+          preceding_car_dist[0] = dist_from_car;
+        }
+      }
+    } else if (d < 8 + 4*current_lane && d > 4 + 4*current_lane) {
+      // car is in my right lane
+      if (dist_from_car > CLOSE_DIST_BACK && dist_from_car <= CLOSE_DIST_FRONT) {
+        // can change lane and need to use this vehicle's velocity as reference velocity.
+        if (dist_from_car < preceding_car_dist[2]) {
+          // record the preceding vehicle.
+          // if there's car right in front of ego, run after it.
+          ref_vels[2] = check_speed;
+          preceding_car_dist[2] = dist_from_car;
         }
       }
     }
   }
 
-  if (!too_close) {
-    // if there's no preceding vehicle within 30m, run at max velocity.
-    _ref_vel = MAX_VEL;
+  // use lane_exist, ref_vels, preceding_car_dist to decide which lane to go.
+  std::vector<double> cost(3);
+  for(int i=0; i<3; i++) {
+    if (!lane_exist[i] || preceding_car_dist[i] < RISK_DIST) {
+      cost[i] = MAX_DOUBLE;
+    } else {
+      cost[i] = MAX_VEL - ref_vels[i];
+    }
   }
+
+  if (cost[0] < cost[1] - COST_MARGIN &&
+      cost[2] < cost[1] - COST_MARGIN) {
+    // both left and right lane change are possible.
+    if (cost[0] <= cost[2] - COST_MARGIN) {
+      // left lane change is better.
+      target_lane -= 1;
+      _ref_vel = ref_vels[0];
+    } else {
+      // right lane change is better.
+      target_lane += 1;
+      _ref_vel = ref_vels[2];
+    }
+  } else if (cost[0] < cost[1] - COST_MARGIN) {
+    // only left lane change is possible.
+    target_lane -= 1;
+    _ref_vel = ref_vels[0];
+  } else if (cost[2] < cost[1] - COST_MARGIN) {
+    // only right lane change is possible.
+    target_lane += 1;
+    _ref_vel = ref_vels[2];
+  } else {
+    _ref_vel = ref_vels[1];
+  }
+
+  std::cout << cost[0] << " " << cost[1] << " " << cost[2] << "\n";
 
   // create a list of widely spaced (x, y) waypoints, evenly spaced at 30m.
   // later interpolate these waypoints with a spline and fill it with more points that control speed.

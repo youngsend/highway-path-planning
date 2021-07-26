@@ -13,12 +13,16 @@
 #include "spline.h"
 
 constexpr double pi() { return M_PI; };
-constexpr int PATH_WAYPOINT_SIZE = 50;
+constexpr int PATH_WAYPOINT_SIZE = 40;
 constexpr double TIME_INTERVAL = 0.02;
 constexpr double MAX_VEL = 49.5 / 2.237; // 49.5mph to m/s.
 constexpr double MAX_ACC = 9.5;
 constexpr double DELTA_VEL = MAX_ACC * TIME_INTERVAL; // velocity change within 0.02s.
-constexpr double CLOSE_DIST = 30;
+constexpr double CLOSE_DIST_FRONT = 30;
+constexpr double CLOSE_DIST_BACK = -5;
+constexpr double RISK_DIST = 5;
+constexpr double MAX_DOUBLE = std::numeric_limits<double>::max();
+constexpr double COST_MARGIN = 1;
 
 class PathPlanner {
  public:
@@ -34,18 +38,18 @@ class PathPlanner {
       _map_waypoints_dy(std::move(map_waypoints_dy)) {};
   ~PathPlanner() = default;
   void FillNextPath(double car_x,
-                           double car_y,
-                           double car_s,
-                           double car_d,
-                           double car_yaw,
-                           double car_speed,
-                           const std::vector<double>& previous_path_x,
-                           const std::vector<double>& previous_path_y,
-                           double end_path_s,
-                           double end_path_d,
-                           const std::vector<std::vector<double>>& sensor_fusion,
-                           std::vector<double>& next_x_vals,
-                           std::vector<double>& next_y_vals);
+                    double car_y,
+                    double car_s,
+                    double car_d,
+                    double car_yaw,
+                    double car_speed,
+                    const std::vector<double>& previous_path_x,
+                    const std::vector<double>& previous_path_y,
+                    double end_path_s,
+                    double end_path_d,
+                    const std::vector<std::vector<double>>& sensor_fusion,
+                    std::vector<double>& next_x_vals,
+                    std::vector<double>& next_y_vals);
 
  private:
   // Calculate closest waypoint to current x, y position
