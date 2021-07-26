@@ -135,8 +135,8 @@ void PathPlanner::FillNextPath(double car_x,
                                const std::vector<std::vector<double>> &sensor_fusion,
                                std::vector<double> &next_x_vals,
                                std::vector<double> &next_y_vals) {
-  // ToDo: 1. lane keeping; 2. follow the preceding vehicle; 3. lane change (cost function);
-  // ToDo: 4. trajectory generation (use x, y coordinates).
+  // 1. lane keeping; 2. follow the preceding vehicle; 3. lane change (cost function);
+  // 4. trajectory generation (use x, y coordinates).
   // calculate current lane index, left: 0, middle: 1, right: 2.
   int current_lane = CurrentLaneIndex(car_d);
   int target_lane = current_lane; // used for lane change and trajectory generation.
@@ -237,7 +237,7 @@ void PathPlanner::FillNextPath(double car_x,
     _ref_vel = ref_vels[1];
   }
 
-  std::cout << cost[0] << " " << cost[1] << " " << cost[2] << "\n";
+//  std::cout << cost[0] << " " << cost[1] << " " << cost[2] << "\n";
 
   // create a list of widely spaced (x, y) waypoints, evenly spaced at 30m.
   // later interpolate these waypoints with a spline and fill it with more points that control speed.
