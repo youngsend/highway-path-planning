@@ -18,11 +18,11 @@ constexpr double TIME_INTERVAL = 0.02;
 constexpr double MAX_VEL = 49.5 / 2.237; // 49.5mph to m/s.
 constexpr double MAX_ACC = 9.5;
 constexpr double DELTA_VEL = MAX_ACC * TIME_INTERVAL; // velocity change within 0.02s.
+// safe distance that there's no need for lane change.
+constexpr double SAFE_DIST_FRONT = 60;
 constexpr double CLOSE_DIST_FRONT = 30;
-constexpr double CLOSE_DIST_BACK = -5;
-constexpr double RISK_DIST = 5;
-constexpr double MAX_DOUBLE = std::numeric_limits<double>::max();
-constexpr double COST_MARGIN = 1;
+constexpr double RISK_DIST = 20;
+constexpr double COST_MARGIN = 5;
 
 class PathPlanner {
  public:
@@ -83,6 +83,10 @@ class PathPlanner {
   std::vector<double> _map_waypoints_dy;
 
   double _ref_vel {MAX_VEL};
+  std::vector<double> _cost_coef {1, 1};
+  // only use target lane, so that lane change will always finish.
+  // if always initialize target_lane as current_lane, lane change may fail.
+  int _target_lane { 1 };
 };
 
 #endif //PATH_PLANNING_SRC_PATH_PLANNER_H_
