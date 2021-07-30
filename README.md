@@ -1,6 +1,6 @@
 # CarND-Path-Planning-Project
 Self-Driving Car Engineer Nanodegree Program
-   
+
 ### Simulator.
 You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases/tag/T3_v1.2).  
 
@@ -105,41 +105,19 @@ using the following settings:
 
 Please (do your best to) stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
 
-## Project Instructions and Rubric
+### Model Documentation
 
-Note: regardless of the changes you make, your project must be buildable using
-cmake and make!
+#### 1. trajectory generation
 
+- Use spline generation tool from http://kluge.in-chemnitz.de/opensource/spline/ to generate trajectory.
+- Input: the last 2 points from last trajectory, and add 3 points which are located at 30, 60, 90 meters in front of last trajectory.
 
-## Call for IDE Profiles Pull Requests
+#### 2. lane change
 
-Help your fellow students!
+- cost function: I used `preceding vehicle's velocity + distance from preceding vehicle` as the cost function to decide whether to change to left lane or right lane, or stay at current lane.
+  - I calculate costs for `left lane change`, `right lane change`, `stay current lane`. And I choose the `maximum` as the final decision.
+- Also, I check the if there is enough space for safe lane change. If not, the cost for lane change will be set to `0`.
 
-We decided to create Makefiles with cmake to keep this project as platform
-agnostic as possible. Similarly, we omitted IDE profiles in order to ensure
-that students don't feel pressured to use one IDE or another.
+#### 3. acceleration constraint
 
-However! I'd love to help people get up and running with their IDEs of choice.
-If you've created a profile for an IDE that you think other students would
-appreciate, we'd love to have you add the requisite profile files and
-instructions to ide_profiles/. For example if you wanted to add a VS Code
-profile, you'd add:
-
-* /ide_profiles/vscode/.vscode
-* /ide_profiles/vscode/README.md
-
-The README should explain what the profile does, how to take advantage of it,
-and how to install it.
-
-Frankly, I've never been involved in a project with multiple IDE profiles
-before. I believe the best way to handle this would be to keep them out of the
-repo root to avoid clutter. My expectation is that most profiles will include
-instructions to copy files to a new location to get picked up by the IDE, but
-that's just a guess.
-
-One last note here: regardless of the IDE used, every submitted project must
-still be compilable with cmake and make./
-
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
-
+- In order to not violate maximum acceleration constraint, when target velocity is different from current velocity, I use maximum acceleration (or deceleration) to calculate distance between waypoints that ego vehicle will follow.
